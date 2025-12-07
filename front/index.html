@@ -24,6 +24,38 @@
 
   <body>
     <div id="root"></div>
+
+    <!-- Input y botón para subir audio -->
+    <input type="file" id="audioFile" accept="audio/*" />
+    <button id="uploadBtn">Enviar</button>
+
+    <!-- Script de envío a FastAPI -->
+    <script>
+      document.getElementById("uploadBtn").addEventListener("click", () => {
+        const fileInput = document.getElementById("audioFile");
+        if (!fileInput.files.length) {
+          alert("Selecciona un archivo primero");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        fetch("http://localhost:8000/predict", {
+          method: "POST",
+          body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+          console.log("Predicción:", data.prediction);
+          console.log("Confianza:", data.confidence);
+          alert(`Predicción: ${data.prediction}\nConfianza: ${data.confidence.toFixed(2)}`);
+        })
+        .catch(err => console.error(err));
+      });
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
+    
   </body>
 </html>
