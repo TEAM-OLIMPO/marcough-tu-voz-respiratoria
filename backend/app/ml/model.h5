@@ -1,0 +1,105 @@
+import os
+import librosa
+import numpy as np
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.optimizers import Adam
+from core.settings import POSITIVOS_DIR, NEGATIVOS_DIR, MODEL_PATH
+
+
+# -----------------------------------------------
+# 1. Función para convertir audio a MFCC
+# -----------------------------------------------
+def extract_mfcc(file_path, max_pad_len=100):
+    try:
+        audio, sr = librosa.load(file_path, sr=22050)
+        mfcc = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=40)
+
+        # Normalizamos el tamaño para que todos los MFCC midan lo mismo
+        if mfcc.shape[1] < max_pad_len:
+            pad_width = max_pad_len - mfcc.shape[1]
+            mfcc = np.pad(mfcc, pad_width=((0, 0), (0, pad_width)), mode='constant')
+        else:
+            mfcc = mfcc[:, :max_pad_len]
+
+        return mfcc.flatten()
+    except Exception as e:
+        print(f"Error procesando {file_path}: {e}")
+        return None
+
+
+# -----------------------------------------------
+# 2. Cargar dataset desde positivos/negativos
+# -----------------------------------------------
+def load_dataset():
+    X = []
+    y = []
+
+    print("📥 Cargando audios positivos…")
+    for f in os.listdir(POSITIVOS_DIR):
+        file_path = os.path.join(POSITIVOS_DIR, f)
+        mfcc = extract_mfcc(file_path)
+        if mfcc is not None:
+            X.append(mfcc)
+            y.append(1)
+
+    print("📥 Cargando audios negativos…")
+    for f in os.listdir(NEGATIVOS_DIR):
+        file_path = os.path.join(NEGATIVOS_DIR, f)
+        mfcc = extract_mfcc(file_path)
+        if mfcc is not None:
+            X.append(mfcc)
+            y.append(0)
+
+    return np.array(X), np.array(y)
+
+
+# -----------------------------------------------
+# 3. Crear modelo sencillo (MLP)
+# -----------------------------------------------
+def create_model(input_dim):
+    model = Sequential()
+    model.add(Dense(256, activation="relu", input_shape=(input_dim,)))
+    model.add(Dropout(0.3))
+    model.add(Dense(128, activation="relu"))
+    model.add(Dropout(0.3))
+    model.add(Dense(1, activation="sigmoid"))
+
+    model.compile(
+        loss="binary_crossentropy",
+        optimizer=Adam(0.001),
+        metrics=["accuracy"]
+    )
+    return model
+
+
+# -----------------------------------------------
+# 4. Entrenar
+# -----------------------------------------------
+def train():
+    print("📚 Preparando dataset…")
+    X, y = load_dataset()
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    print("🧠 Creando modelo…")
+    model = create_model(X_train.shape[1])
+
+    print("🏋️ Entrenando…")
+    model.fit(X_train, y_train, epochs=30, batch_size=16, validation_split=0.2)
+
+    print("🧪 Evaluando…")
+    loss, acc = model.evaluate(X_test, y_test)
+    print(f"✔ Test accuracy: {acc:.4f}")
+
+    print(f"💾 Guardando modelo en {MODEL_PATH}")
+    model.save(MODEL_PATH)
+
+    print("🎉 Entrenamiento completado")
+
+
+if __name__ == "__main__":
+    train()
