@@ -110,4 +110,3 @@ L = -\frac{1}{N} \sum_{i=1}^N \big[ y_i \log(\hat{y}_i) + (1-y_i) \log(1-\hat{y}
  se calcula en tu código:
 
 loss, acc = model.evaluate(X_test, y_test)
-print(f"✔ Test accuracy: {acc:.4f}")
