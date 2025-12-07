@@ -18,7 +18,7 @@ from app.schemas.prediction import (
     PredictionClass
 )
 from app.models.prediction import Prediction
-from app.ml.predictor import predict_covid
+from backend.app.ml.predict import predict_covid
 from app.config import settings
 import librosa
 
